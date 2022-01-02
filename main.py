@@ -6,10 +6,32 @@ import socket
 import subprocess
 
 
+# Helper class/data type for having all the Network info in one data structure
+class NetworkData:
+    def __init__(self, source_addr, source_port, dest_addr, dest_port, data_size, protocol):
+        self.source_addr = source_addr
+        self.source_port = source_port
+        self.dest_addr = dest_addr
+        self.dest_port = dest_port
+        self.data_size = data_size
+        self.protocol = protocol
+
+
+# Helper class/data type for having all the process info in one data structure
+class Process:
+    def __init__(self, process_name, process_cmd, process_id):
+        self.process_name = process_name
+        self.process_cmd = process_cmd
+        self.process_id = process_id
+
+
 # Press Shift+F10 to execute it or replace it with your code.
 class RCFramework:
-    # Member Variable for the log
-    m_logFile = open("log.json", "a")
+    def __init__(self):
+        self.m_logFile = open("log.json", "a")
+
+    def __del__(self):
+        self.m_logFile.close()
 
     # Start a process, given a path to an executable file and the desired (optional) command-line arguments
     @staticmethod
@@ -61,35 +83,63 @@ class RCFramework:
         # Close the socket when done
         s.close()
 
-    def log_process_start(self, process_name, process_command_line, process_id):
+    def log_process_start(self, p: Process):
         dict_log = {
             "timestamp": datetime.isoformat(datetime.now()),
             "username": getpass.getuser(),
             "process": {
-                "name": process_name,
-                "command_line": process_command_line,
-                "id": process_id,
+                "name": p.process_name,
+                "command_line": p.process_cmd,
+                "id": p.process_id,
             }
         }
         jsonObj = json.dumps(dict_log)
         print(jsonObj)
-        # String concat is slow, so instead just write to the file twice
+        # String concat is slow and can be error-prone, so instead just write to the file twice
         self.m_logFile.write(jsonObj)
         self.m_logFile.write('\n')
 
-        """
-        if log file already exists
-            open log file
-            add json to the end
-        else
-            create new log file
-        """
+    def log_file_io(self, path, activityDesc, p: Process):
+        dict_log = {
+            "timestamp": datetime.isoformat(datetime.now()),
+            "path": path,
+            "activity_desc": activityDesc,
+            "username": getpass.getuser(),
+            "process": {
+                "name": p.process_name,
+                "command_line": p.process_cmd,
+                "id": p.process_id,
+            }
+        }
+        jsonObj = json.dumps(dict_log)
+        print(jsonObj)
+        # String concat is slow and can be error-prone, so instead just write to the file twice
+        self.m_logFile.write(jsonObj)
+        self.m_logFile.write('\n')
 
-    def log_file_creation(self):
-        pass
-
-    def log_network_activity(self):
-        pass
+    def log_network_activity(self, nd: NetworkData, p: Process):
+        dict_log = {
+            "timestamp": datetime.isoformat(datetime.now()),
+            "username": getpass.getuser(),
+            "network_data": {
+                "source_addr": nd.source_addr,
+                "source_port": nd.source_port,
+                "dest_addr": nd.dest_addr,
+                "dest_port": nd.dest_port,
+                "data_size": nd.data_size,
+                "protocol": nd.protocol
+            },
+            "process": {
+                "name": p.process_name,
+                "command_line": p.process_cmd,
+                "id": p.process_id,
+            }
+        }
+        jsonObj = json.dumps(dict_log)
+        print(jsonObj)
+        # String concat is slow and can be error-prone, so instead just write to the file twice
+        self.m_logFile.write(jsonObj)
+        self.m_logFile.write('\n')
 
 
 # Press the green button in the gutter to run the script.
@@ -102,7 +152,10 @@ if __name__ == '__main__':
     # fw.delete_file(fileName)
     # fw.delete_file("alskdfasldkfj")
     # fw.send("127.0.0.1", 9090)
-    fw.log_process_start("ls", "stuff", 23874)
+    # myProcess = Process("ls", "stuff", 23874)
+    fw.log_process_start(Process("ls", "stuff", 23874))
+    fw.log_file_io("here/is/my/path", "create", Process("ls", "stuff", 23874))
+    fw.log_network_activity(NetworkData("1.1.1.1", "8080", "8.8.8.8", "80", "1024", "HTTP"), Process("ls", "stuff", 23874))
 
     print("--End of main--\n")
 
