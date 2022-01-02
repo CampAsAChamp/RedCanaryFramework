@@ -8,6 +8,9 @@ import subprocess
 
 # Press Shift+F10 to execute it or replace it with your code.
 class RCFramework:
+    # Member Variable for the log
+    m_logFile = open("log.json", "a")
+
     # Start a process, given a path to an executable file and the desired (optional) command-line arguments
     @staticmethod
     def run_executable(path, command_args=[]):
@@ -37,9 +40,10 @@ class RCFramework:
             print("\t" + path)
 
     # Establish a network connection and transmit data
-    #   -- Needs a server running to accept the connection to be able to send data
+    #  ! Needs a server running to accept the connection to be able to send data
     @staticmethod
     def send(host, port):
+        # Try to connect to server
         s = socket.socket()
         s.connect((host, port))
 
@@ -58,19 +62,28 @@ class RCFramework:
         s.close()
 
     def log_process_start(self, process_name, process_command_line, process_id):
-        date = datetime.isoformat(datetime.now())
-        user = getpass.getuser()  # Works on Unix and Windows
-        raw_python = {
-            "timestamp": date,
-            "username": user,
+        dict_log = {
+            "timestamp": datetime.isoformat(datetime.now()),
+            "username": getpass.getuser(),
             "process": {
                 "name": process_name,
                 "command_line": process_command_line,
                 "id": process_id,
             }
         }
-        the_json = json.dumps(raw_python)
-        print(the_json)
+        jsonObj = json.dumps(dict_log)
+        print(jsonObj)
+        # String concat is slow, so instead just write to the file twice
+        self.m_logFile.write(jsonObj)
+        self.m_logFile.write('\n')
+
+        """
+        if log file already exists
+            open log file
+            add json to the end
+        else
+            create new log file
+        """
 
     def log_file_creation(self):
         pass
