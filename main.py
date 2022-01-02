@@ -4,6 +4,7 @@ import json
 import os
 import socket
 import subprocess
+import unittest
 
 
 # Helper class/data type for having all the Network info in one data structure
@@ -28,6 +29,7 @@ class Process:
 # Press Shift+F10 to execute it or replace it with your code.
 class RCFramework:
     def __init__(self):
+        # Each instance of the Framework will have its own log file
         self.m_logFile = open("log.json", "a")
 
     def __del__(self):
@@ -69,13 +71,13 @@ class RCFramework:
     # ** Same for sending data
     # Make bufferSize configurable
     @staticmethod
-    def send(host, port):
+    def send(host, port, data):
         # Try to connect to server, error if not able to connect
         s = socket.socket()
         s.connect((host, port))
 
         # Send data to server
-        data = "Hello Server!"
+        # data = "Hello Server!"
         s.send(data.encode())
 
         # Receive data from server
@@ -150,18 +152,32 @@ class RCFramework:
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     fw = RCFramework()
-    # fw.run_executable("dir", ["/d"])
-    # fw.run_executable("dir")
+
+    cmd = "dir"
+    cmdArgs = ["/w", "/d"]
+    fw.run_executable(cmd)  # Should run the regular dir command
+    fw.run_executable(cmd, cmdArgs)  # Should run the dir command with /d --> "dir /d"
+
+    print("------------------------------")
+
     fileName = "test.txt"
-    fw.create_file(fileName)
-    # fw.delete_file(fileName)
-    # fw.delete_file("alskdfasldkfj")
-    # fw.send("127.0.0.1", 9090)
+    fw.create_file(fileName)  # Should create a file
+    fw.modify_file(fileName)  # Should modify the file (currently does nothing)
+    fw.delete_file(fileName)  # Should delete the file we just created
+    fw.delete_file("asdf.txt")  # Should print error
+
+    print("------------------------------")
+
+    # Test out sending data to a source address and port
+    # fw.send("127.0.0.1", 9090, "hello world")
+
     mockProcess = Process("ls", "stuff", "23874")
     mockNetworkData = NetworkData("1.1.1.1", "8080", "8.8.8.8", "80", "1024", "HTTP")
     fw.log_process_start(mockProcess)
     fw.log_file_io("here/is/my/path", "create", mockProcess)
     fw.log_network_activity(mockNetworkData, mockProcess)
+
+    print("------------------------------")
 
     print("--End of main--\n")
 
