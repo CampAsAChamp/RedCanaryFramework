@@ -45,7 +45,8 @@ class RCFramework:
     @staticmethod
     def create_file(path):
         f = open(path, "w")
-        f.write("Hello World")
+        f.close()
+        # f.write("Hello World")
 
     # Modify a file
     @staticmethod
@@ -63,9 +64,13 @@ class RCFramework:
 
     # Establish a network connection and transmit data
     #  ! Needs a server running to accept the connection to be able to send data
+    # ** For improvements on this, add a configurable amount of time to try to connect before timing out,
+    #    instead of only trying once and throwing error if we can't connect on first try
+    # ** Same for sending data
+    # Make bufferSize configurable
     @staticmethod
     def send(host, port):
-        # Try to connect to server
+        # Try to connect to server, error if not able to connect
         s = socket.socket()
         s.connect((host, port))
 
@@ -147,15 +152,16 @@ if __name__ == '__main__':
     fw = RCFramework()
     # fw.run_executable("dir", ["/d"])
     # fw.run_executable("dir")
-    # fileName = "test.txt"
-    # fw.create_file(fileName)
+    fileName = "test.txt"
+    fw.create_file(fileName)
     # fw.delete_file(fileName)
     # fw.delete_file("alskdfasldkfj")
     # fw.send("127.0.0.1", 9090)
-    # myProcess = Process("ls", "stuff", 23874)
-    fw.log_process_start(Process("ls", "stuff", 23874))
-    fw.log_file_io("here/is/my/path", "create", Process("ls", "stuff", 23874))
-    fw.log_network_activity(NetworkData("1.1.1.1", "8080", "8.8.8.8", "80", "1024", "HTTP"), Process("ls", "stuff", 23874))
+    mockProcess = Process("ls", "stuff", "23874")
+    mockNetworkData = NetworkData("1.1.1.1", "8080", "8.8.8.8", "80", "1024", "HTTP")
+    fw.log_process_start(mockProcess)
+    fw.log_file_io("here/is/my/path", "create", mockProcess)
+    fw.log_network_activity(mockNetworkData, mockProcess)
 
     print("--End of main--\n")
 
