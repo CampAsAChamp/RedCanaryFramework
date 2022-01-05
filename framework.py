@@ -7,7 +7,7 @@ import subprocess
 import unittest
 
 
-# Helper class/data type for having all the Network info in one data structure
+# Helper class/data type for having all the Network info in one data structure to be able to pull parts of the data out
 class NetworkData:
     def __init__(self, source_addr, source_port, dest_addr, dest_port, data_size, protocol):
         self.source_addr = source_addr
@@ -18,10 +18,11 @@ class NetworkData:
         self.protocol = protocol
 
 
-# Helper class/data type for having all the process info in one data structure
-class Process:
+# Helper class/data type for having all the process info in one data structure to be able to pull parts of the data out
+class ProcessInfo:
     def __init__(self, process_name, process_cmd, process_id):
         self.process_name = process_name
+        # The command name and list of arguments passed to it. Can strip the first part of this to be the process name
         self.process_cmd = process_cmd
         self.process_id = process_id
 
@@ -36,28 +37,32 @@ class RCFramework:
         self.m_logFile.close()
 
     # Start a process, given a path to an executable file and the desired (optional) command-line arguments
-    @staticmethod
-    def run_executable(path, command_args=[]):
+    # Do we want to wait for the process to finish or just to open it?
+    def run_executable(self, path, command_args=[]):
         arg_list = [path]
         arg_list.extend(command_args)  # Will do nothing if there are no command-line arguments provided
         print(arg_list)
-        subprocess.run(args=arg_list, shell=True)
+        # TODO: Look more into shell=True
+        process = subprocess.Popen(args=arg_list, shell=True)
+        print(arg_list[0], arg_list, process.pid)
+        # pInfo = ProcessInfo(arg_list[0], arg_list, process.pid)
+        # self.log_process_start()
+
 
     # Create a file of specified type at a specified location
-    @staticmethod
-    def create_file(path):
+    def create_file(self, path):
+        # TODO: Sanitize the path before opening
         f = open(path, "w")
         f.close()
         # f.write("Hello World")
 
     # Modify a file
-    @staticmethod
-    def modify_file(path):
+    # What does modify a file mean? Need clarification on that
+    def modify_file(self, path):
         pass
 
     # Delete a file
-    @staticmethod
-    def delete_file(path):
+    def delete_file(self, path):
         if os.path.exists(path):
             os.remove(path)
         else:
@@ -70,9 +75,9 @@ class RCFramework:
     #    instead of only trying once and throwing error if we can't connect on first try
     # ** Same for sending data
     # Make bufferSize configurable
-    @staticmethod
-    def send(host, port, data):
+    def send(self, host, port, data):
         # Try to connect to server, error if not able to connect
+        # TODO: Make connect into a separate private function
         s = socket.socket()
         s.connect((host, port))
 
@@ -90,7 +95,7 @@ class RCFramework:
         # Close the socket when done
         s.close()
 
-    def log_process_start(self, p: Process):
+    def log_process_start(self, p: ProcessInfo):
         dict_log = {
             "timestamp": datetime.isoformat(datetime.now()),
             "username": getpass.getuser(),
@@ -106,7 +111,7 @@ class RCFramework:
         self.m_logFile.write(jsonObj)
         self.m_logFile.write('\n')
 
-    def log_file_io(self, path, activityDesc, p: Process):
+    def log_file_io(self, path, activityDesc, p: ProcessInfo):
         dict_log = {
             "timestamp": datetime.isoformat(datetime.now()),
             "path": path,
@@ -124,7 +129,7 @@ class RCFramework:
         self.m_logFile.write(jsonObj)
         self.m_logFile.write('\n')
 
-    def log_network_activity(self, nd: NetworkData, p: Process):
+    def log_network_activity(self, nd: NetworkData, p: ProcessInfo):
         dict_log = {
             "timestamp": datetime.isoformat(datetime.now()),
             "username": getpass.getuser(),
@@ -149,14 +154,23 @@ class RCFramework:
         self.m_logFile.write('\n')
 
 
+# If this were to be something I'd actually commit I would have actual unit tests with (hopefully) a testing framework
+# Test Cases I am seeing
+"""
+- Check if file exists after calling create_file
+- Check if file exists after calling create_file with same name as previous
+- Calling create file on a path that does not exist (do we create the folders to get to that path?)
+- Expected behavior of calling create_file with empty path
+"""
+
 def main():
     fw = RCFramework()
 
     cmd = "dir"
-    cmdArgs = ["/w", "/d"]
-    fw.run_executable(cmd)  # Should run the regular dir command
-    fw.run_executable(cmd, cmdArgs)  # Should run the dir command with /d --> "dir /d"
-
+    cmdArgs = ["/d", "/w"]
+    # fw.run_executable(cmd)  # Should run the regular dir command, no arguments
+    fw.run_executable(cmd, cmdArgs)  # Should run the dir command with /d and /w --> "dir /d /w or dir /d/w"
+    """   
     print("------------------------------")
 
     fileName = "test.txt"
@@ -170,14 +184,15 @@ def main():
     # Test out sending data to a source address and port
     # fw.send("127.0.0.1", 9090, "hello world")
 
-    mockProcess = Process("ls", "stuff", "23874")
+    mockProcess = ProcessInfo("ls", "stuff", "23874")
     mockNetworkData = NetworkData("1.1.1.1", "8080", "8.8.8.8", "80", "1024", "HTTP")
     fw.log_process_start(mockProcess)
     fw.log_file_io("here/is/my/path", "create", mockProcess)
     fw.log_network_activity(mockNetworkData, mockProcess)
 
     print("------------------------------")
-
+    
+    """
     print("--End of main--\n")
 
 
