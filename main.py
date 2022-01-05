@@ -149,8 +149,7 @@ class RCFramework:
         self.m_logFile.write('\n')
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
+def main():
     fw = RCFramework()
 
     cmd = "dir"
@@ -180,6 +179,12 @@ if __name__ == '__main__':
     print("------------------------------")
 
     print("--End of main--\n")
+
+
+# Press the green button in the gutter to run the script.
+# Only runs if the file is being run as a script, not being imported as a module
+if __name__ == '__main__':
+    main()
 
 """
 Start a process, given a path to an executable file and the desired (optional) command-line arguments
