@@ -40,6 +40,8 @@ class RCFramework:
     # Do we want to wait for the process to finish or just to open it?
     def run_executable(self, path, command_args=[]):
         arg_list = [path]
+        # Creates a list with [path and adds the optional command args to the list]
+        # ex: ['/path/to/file' '-a' '-l']
         arg_list.extend(command_args)  # Will do nothing if there are no command-line arguments provided
         print(arg_list)
         # TODO: Look more into shell=True
