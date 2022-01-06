@@ -68,6 +68,7 @@ class RCFramework:
         arg_list = [path]
         arg_list.extend(command_args)  # Will do nothing if there are no command-line arguments provided
         arg_list_str = " ".join(arg_list)
+        # Setting the shell argument to a true value causes subprocess to spawn an intermediate shell process, and tell it to run the command
         if os.name == "nt":
             process = subprocess.Popen(args=arg_list, shell=True)
         elif os.name == "posix":
