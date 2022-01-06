@@ -27,6 +27,7 @@ def receive(host, port):
 
 
 # Run this script separately from the framework to be able to test the send() method
+# Requires user to end the script manually with Ctrl+C or killing the process
 def main():
     address = "127.0.0.1"
     port = 9090
