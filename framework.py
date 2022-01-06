@@ -5,8 +5,10 @@ import os
 import socket
 import subprocess
 import sys
-import unittest
 
+# -------
+# Not familiar with Python in large codebases/companies so I'm unsure what the standard ways of doing documentation are. This is what I found online
+#---------
 
 # Helper class/data type for having all the Network info in one data structure to be able to pull parts of the data out
 class NetworkData:
@@ -27,9 +29,19 @@ class ProcessInfo:
         self.process_cmd = process_cmd
         self.process_id = process_id
 
-
-# Press Shift+F10 to execute it or replace it with your code.
 class RCFramework:
+
+    """
+    A framework that will generate endpoint activity. We will be able to test an EDR agent and ensure it generates
+    the appropriate telemetry
+
+    Attributes
+    ----------
+    m_logFile: file
+        A file for logging all the activity the framework has triggered. It will
+        allow us to correlate what data the test program generated with the actual data recorded by an EDR agent
+    """
+
     def __init__(self):
         # Each instance of the Framework will have its own log file
         # Open it in appending mode, won't overwrite the file if it already exists, just appends to the end
@@ -38,8 +50,17 @@ class RCFramework:
     def __del__(self):
         self.m_logFile.close()
 
-    # Start a process, given a path to an executable file and the desired (optional) command-line arguments
-    # Do we want to wait for the process to finish or just to open it?
+    """
+        run_executable(path, command_args=[])
+            - Start a process, given a path to an executable file and the desired (optional) command-line arguments
+            - [Question]: Do we want to wait for the process to finish or just to open it?
+            - [Improvement]: Sanitize the path before opening (Check if path exists, check slashes are the correct way,...etc)
+    
+            path: str
+                Path to the executable/command to be executed
+            command_args: list[string]
+                Optional list of command arguments to the executable/command to be executed
+    """
     def run_executable(self, path, command_args=[]):
         # Creates a list with path and adds the optional command args to the list
         # ex: ['/path/to/file' '-a' '-l']
@@ -48,21 +69,26 @@ class RCFramework:
         arg_list_str = " ".join(arg_list)
         process = subprocess.Popen(args=arg_list, shell=True)
 
-        # For improvements, I might separate variable for pInfo and just create one inside the log_process_start()
-        # function call, as we don't need to do anything with pInfo after this Converting to string since we aren't
-        # doing any calculations with the pid, and want to keep consistent with everything else
+        # *! Improvements: I might separate variable for pInfo and just create one inside the log_process_start()
+        # function call, as we don't need to do anything with pInfo after this.
+        # Converting to string since we aren't doing any calculations with the pid, and want to keep consistent with everything else
         pInfo = ProcessInfo(arg_list[0], arg_list_str, str(process.pid))
         self.log_process_start(pInfo)
 
-    # Create a file of specified type at a specified location
-    # For improvements, sanitize the path before opening
+    """
+        create_file(path)
+            - Create a file of specified type at a specified location
+            - [Improvement]: Sanitize the path before opening
+    
+            path: str
+                Path to the file to be created
+    """
     def create_file(self, path):
         # Open file in overwrite mode, if the file already exists overwrite it
         fileOpenMode = "w"
         f = open(path, fileOpenMode)
         f.close()
 
-        # For logging
         # A little unsure of what to be putting for here
         command = "open"
         commandLine = command + " " + path + " " + fileOpenMode
@@ -71,16 +97,20 @@ class RCFramework:
         activityDesc = "Create"
         self.log_file_io(path, activityDesc, p)
 
-    # Modify a file
-    # What does modify a file mean? Need clarification on that
+    """
+        modify_file(path)
+            - Modify a file
+            - [Question]: What does modify a file mean?
+    
+            path: str
+                Path to the file to be modified
+    """
     def modify_file(self, path):
-        # Open it in appending mode, as we are appending.
-        # It won't overwrite the file if it already exists, just appends to the end
+        # Open it in appending mode, as we are appending. It won't overwrite the file if it already exists, just appends to the end
         fileOpenMode = "a"
         f = open(path, fileOpenMode)
         f.close()
 
-        # For logging
         # A little unsure of what to be putting for here
         command = "open"
         commandLine = command + " " + path + " " + fileOpenMode
@@ -89,13 +119,18 @@ class RCFramework:
         activityDesc = "Modify"
         self.log_file_io(path, activityDesc, p)
 
-    # Delete a file
-    # Should we still log if the file isn't there? Need clarification
+    """
+        delete_file(path)
+            - Delete a file
+            - [Question]: Should we still log if the file isn't there?
+    
+            path: str
+                Path to the file to be deleted
+    """
     def delete_file(self, path):
         if os.path.exists(path):
             os.remove(path)
 
-            # For logging
             # A little unsure of what to be putting for here
             command = "os.remove"
             commandLine = command + path
@@ -107,44 +142,45 @@ class RCFramework:
             print("The file does not exist:")
             print("\t" + path)
 
-    # Establish a network connection and transmit data
-    #  ! Needs a server running to accept the connection to be able to send data
-    # ** For improvements on this, add a configurable amount of time to try to connect before timing out,
-    #    instead of only trying once and throwing error if we can't connect on first try
-    # ** Same for sending data
-    # Make bufferSize configurable
+    """
+        send(host, port, data)
+            - Establish a network connection and transmit data
+            - [Requirement]: Needs a server running to accept the connection to be able to send data
+            - [Improvement]: Add a configurable amount of time to try to connect before timing out, instead of only trying once and throwing error if we can't connect on first try.
+            - [Improvement]: Make connect into a separate private function
+            - [Improvement]: Same for the call to actually send the data
+            - [Improvement]: Make bufferSize configurable
+    
+            host: str
+                Destination address to transmit data
+            port: str
+                Port to transmit data
+            data: str
+                String to be sent to the host & port
+    """
     def send(self, host, port, data):
-        # For improvements, make connect into a separate private function
-        # Try to connect to server, error if not able to connect
+        #   Try to connect to server, error if not able to connect
 
         # Create a client socket
         clientSocket = socket.socket()
-        print("Created client socket")
 
         # Connect to the server
         clientSocket.connect((host, port))
-        clientHost, clientPort = clientSocket.getpeername()
-        print("Connected to %s:%s" % (host, port))
-        print("From %s:%s" % (clientHost, clientPort))
 
         # Send data to server
+        clientSocket.send(data.encode())
         dataSentSize = str(sys.getsizeof(data))
         protocol = "TCP"
-        clientSocket.send(data.encode())
-        print("Sent '", data, "' to server.", dataSentSize, "bytes")
 
         # Receive sourceAddr and sourcePort from server
         bufferSize = 1024
         sourceAddr = clientSocket.recv(bufferSize).decode()
         sourcePort = clientSocket.recv(bufferSize).decode()
 
-        # Print to console
-        print("Data from server:")
-        print("\t", sourceAddr)
-        print("\t", sourcePort)
-
         # Close the socket when done
         clientSocket.close()
+
+        # For logging
         command = "send"
         commandLine = command + " " + data
         pid = str(os.getpid())
@@ -152,8 +188,21 @@ class RCFramework:
         nd = NetworkData(sourceAddr, sourcePort, host, str(port), dataSentSize, protocol)
         self.log_network_activity(nd, p)
 
-    # Dictionary is an optional parameter
-    def log_to_file(self, p: ProcessInfo, d: dict = {}):
+
+    """
+        __log_to_file(p: ProcessInfo, d: dict = {})
+            - Private helper function which does the actual logging to the json file.
+            - The rest of the log functions are wrappers around this function.
+            - Creates a Python dictionary which mimics JSON to output
+            - All of the different log-types have common stuff which they all have to log (timestamp, username, process info)
+            - Adds the log-type specific info in addition to this common dictionary, converts the whole thing to JSON, and append this JSON to the log file
+    
+            d: dict = []
+                Log-type specific logging info
+            p: ProcessInfo
+                Information about the process to log
+    """
+    def __log_to_file(self, p: ProcessInfo, d: dict = {}):
         commonLogDict = {
             "timestamp": datetime.isoformat(datetime.now()),
             "username": getpass.getuser(),
@@ -171,16 +220,37 @@ class RCFramework:
         self.m_logFile.write(jsonObj)
         self.m_logFile.write('\n')
 
+    """
+        log_process_start(p: ProcessInfo)
+            p: ProcessInfo
+                Information about the process to log
+    """
     def log_process_start(self, p: ProcessInfo):
-        self.log_to_file(p)
+        self.__log_to_file(p)
 
+    """    
+        log_file_io(path, activityDesc, p: ProcessInfo)
+            path: str
+                Path to the file which was created/modified/deleted
+            activityDesc: str
+                Type of activity which was performed on the file [created/modified/deleted]
+            p: ProcessInfo
+                Information about the process to log
+    """
     def log_file_io(self, path, activityDesc, p: ProcessInfo):
         dict_log = {
             "path": path,
             "activity_desc": activityDesc,
         }
-        self.log_to_file(p, dict_log)
+        self.__log_to_file(p, dict_log)
 
+    """
+        log_network_activity(nd: NetworkData, p: ProcessInfo)
+            nd: NetworkData
+                Information about the network for which we sent data to
+            p: ProcessInfo
+                Information about the process to log
+    """
     def log_network_activity(self, nd: NetworkData, p: ProcessInfo):
         dict_log = {
             "network_data": {
@@ -192,7 +262,7 @@ class RCFramework:
                 "protocol": nd.protocol
             }
         }
-        self.log_to_file(p, dict_log)
+        self.__log_to_file(p, dict_log)
 
 
 # If this were to be something I'd actually commit I would have actual unit tests with (hopefully) a testing framework
@@ -208,6 +278,7 @@ class RCFramework:
 def main():
     fw = RCFramework()
 
+    # Some manual tests and examples of the framework
     cmd = "dir"
     cmdArgs = ["/d", "/w"]
     fw.run_executable(cmd)  # Should run the regular dir command, no arguments
@@ -218,10 +289,10 @@ def main():
     fw.create_file(fileName)  # Should create a file
     fw.modify_file(fileName)  # Should modify the file (currently does nothing)
     fw.delete_file(fileName)  # Should delete the file we just created
-    fw.delete_file("asdf.txt")  # Should print error
+    fw.delete_file("asdf.txt")  # Should print error that file does not exist
 
     print("------------------------------")
-    # Test out sending data to a source address and port
+    # Test out sending data to a source address and port (same address and port that the server is listening for)
     address = "127.0.0.1"
     port = 9090
     fw.send(address, port, "hello world")
@@ -236,35 +307,6 @@ def main():
     print("--End of main--\n")
 
 
-# Press the green button in the gutter to run the script.
 # Only runs if the file is being run as a script, not being imported as a module
 if __name__ == '__main__':
     main()
-
-"""
-Start a process, given a path to an executable file and the desired (optional) command-line arguments
-Use Python subprocess module
-ex: framework.runExecutable(“path/to/file”, [“arg1, arg2”])
-
-Create a file of specified type at a specified location
-Use Python standard File I/O module
-ex: framework.createFile(“path/to/file”)
-
-Modify a file
-ex: framework.modifyFile(“path/to/file”)
-
-Delete a file
-ex: framework.deleteFile(“path/to/file”)
-
-Establish a network connection and transmit data
-ex: framework.connect(host, port)
-ex: framework.send(msg)
-
-Additionally this program should keep a log of the activity it triggered.
-The activity log allows us to correlate what data the test program generated with the actual data recorded by an EDR agent
-This log should be in a machine friendly format (e.g CSV, TSV, JSON, YAML, etc)
-Use JSON with the JSON module in Python for our functions
-ex: framework.logProcessStart(...)
-ex: framework.logFileCreation(...)
-ex: framework.logNetworkActivity(...)
-"""

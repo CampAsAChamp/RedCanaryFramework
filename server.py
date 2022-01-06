@@ -28,7 +28,6 @@ def receive(host, port):
 
 # Run this script separately from the framework to be able to test the send() method
 def main():
-    print("Hello World")
     address = "127.0.0.1"
     port = 9090
     receive(address, port)
