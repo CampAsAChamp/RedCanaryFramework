@@ -55,7 +55,8 @@ class RCFramework:
             - Start a process, given a path to an executable file and the desired (optional) command-line arguments
             - [Question]: Do we want to wait for the process to finish or just to open it?
             - [Improvement]: Sanitize the path before opening (Check if path exists, check slashes are the correct way,...etc)
-    
+            - [Requirement]: Path is a file path to an existing file
+            
             path: str
                 Path to the executable/command to be executed
             command_args: list[string]
@@ -78,7 +79,8 @@ class RCFramework:
     """
         create_file(path)
             - Create a file of specified type at a specified location
-            - [Improvement]: Sanitize the path before opening
+            - [Improvement]: Sanitize the path before opening (Check if path exists, check slashes are the correct way,...etc)                -
+            - [Requirement]: Path is a file path to an existing file   
     
             path: str
                 Path to the file to be created
@@ -101,7 +103,8 @@ class RCFramework:
         modify_file(path)
             - Modify a file
             - [Question]: What does modify a file mean?
-    
+            - [Requirement]: Path is a file path to an existing file
+            
             path: str
                 Path to the file to be modified
     """
@@ -123,7 +126,7 @@ class RCFramework:
         delete_file(path)
             - Delete a file
             - [Question]: Should we still log if the file isn't there?
-    
+            
             path: str
                 Path to the file to be deleted
     """
@@ -145,7 +148,9 @@ class RCFramework:
     """
         send(host, port, data)
             - Establish a network connection and transmit data
-            - [Requirement]: Needs a server running to accept the connection to be able to send data
+            - [Requirement]: Needs a server running on (host:port), to accept the connection and be able to send data
+            - [Requirement]: socket.send() can only be used with a connected socket, which means it can only be used with TCP based sockets, not UDP
+            - [Requirement]: Data sent through socket.send() needs to be in bytes format. Convert from a string using encode()
             - [Improvement]: Add a configurable amount of time to try to connect before timing out, instead of only trying once and throwing error if we can't connect on first try.
             - [Improvement]: Make connect into a separate private function
             - [Improvement]: Same for the call to actually send the data
@@ -156,7 +161,7 @@ class RCFramework:
             port: str
                 Port to transmit data
             data: str
-                String to be sent to the host & port
+                String to be sent to the host & port, will be converted to bytes
     """
     def send(self, host, port, data):
         #   Try to connect to server, error if not able to connect
@@ -266,12 +271,18 @@ class RCFramework:
 
 
 # If this were to be something I'd actually commit I would have actual unit tests with (hopefully) a testing framework
-# Test Cases I am seeing
+# -- Some test Cases I am seeing: --
 """
 - Check if file exists after calling create_file
-- Check if file exists after calling create_file with same name as previous
+- Verify behavior of calling create_file on an already existing file
 - Calling create file on a path that does not exist (do we create the folders to get to that path?)
 - Expected behavior of calling create_file with empty path
+- Sending nothing/empty data
+- Attempt to send data to server that isn't running
+- Attempt to send data to server on different port than server is running on
+- Creating the log file if the file doesn't exist yet
+- Verify logs are getting appended to existing file
+- Test all three log functions and make sure they are logging their correct stuff and not one of the others
 """
 
 
