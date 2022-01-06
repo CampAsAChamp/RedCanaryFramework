@@ -84,13 +84,15 @@ class RCFramework:
     """
         __getProcessUtilInfo(pid)
             - Private helper function for getting the name and command line of the currently running process   
-
+            - [Improvement]: Spaces in processUtilInfo.cmdline() and handling them better
+            
             pid: int
                 Process ID for currently running process
     """
     def __getProcessUtilInfo(self, pid):
         processUtilInfo = psutil.Process(pid)
         name = processUtilInfo.name()
+        # 'My File.txt'
         cmd = " ".join(processUtilInfo.cmdline())
         return name, cmd
 
@@ -127,10 +129,13 @@ class RCFramework:
                 Path to the file to be modified
     """
 
-    def modify_file(self, path):
+    def modify_file(self, path, data=""):
         # Open it in appending mode, as we are appending. It won't overwrite the file if it already exists, just appends to the end
         fileOpenMode = "a"
         f = open(path, fileOpenMode)
+        if data != "":
+            f.write(data + '\n')
+
         f.close()
 
         # A little unsure of what to be putting for here
@@ -166,7 +171,7 @@ class RCFramework:
     """
         send(host, port, data)
             - Establish a network connection and transmit data
-            - [Requirement]: Needs a server running on (host:port), to accept the connection and be able to send data
+            - [Requirement]: Needs a server running on (host:port), to accept the connection and for us to be able to send data
             - [Requirement]: socket.send() can only be used with a connected socket, which means it can only be used with TCP based sockets, not UDP
             - [Requirement]: Data sent through socket.send() needs to be in bytes format. Convert from a string using encode()
             - [Improvement]: Add a configurable amount of time to try to connect before timing out, instead of only trying once and throwing error if we can't connect on first try.
@@ -235,6 +240,7 @@ class RCFramework:
                 "id": p.process_id,
             }
         }
+        # Appends param d to the common dictionary
         commonLogDict.update(d)
         jsonObj = json.dumps(commonLogDict)
 
@@ -303,6 +309,7 @@ class RCFramework:
 - Creating the log file if the file doesn't exist yet
 - Verify logs are getting appended to existing file
 - Test all three log functions and make sure they are logging their correct stuff and not one of the others
+- Check problems of getting subprocess info right after creating the subprocess
 """
 
 
@@ -336,6 +343,7 @@ def main():
     port = 9090
     fw.send(address, port, "hello world")
 
+    # Test out the three logging functions with mock data
     mockProcess = ProcessInfo("ls", "stuff", "23874")
     mockNetworkData = NetworkData("1.1.1.1", "8080", "8.8.8.8", "80", "1024", "HTTP")
     fw.log_process_start(mockProcess)
