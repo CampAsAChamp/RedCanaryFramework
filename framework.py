@@ -2,13 +2,15 @@ from datetime import datetime
 import getpass
 import json
 import os
+import psutil
 import socket
 import subprocess
 import sys
 
+
 # -------
 # Not familiar with Python in large codebases/companies so I'm unsure what the standard ways of doing documentation are. This is what I found online
-#---------
+# ---------
 
 # Helper class/data type for having all the Network info in one data structure to be able to pull parts of the data out
 class NetworkData:
@@ -29,8 +31,8 @@ class ProcessInfo:
         self.process_cmd = process_cmd
         self.process_id = process_id
 
-class RCFramework:
 
+class RCFramework:
     """
     A framework that will generate endpoint activity. We will be able to test an EDR agent and ensure it generates
     the appropriate telemetry
@@ -62,23 +64,29 @@ class RCFramework:
             command_args: list[string]
                 Optional list of command arguments to the executable/command to be executed
     """
-    def run_executable(self, path, command_args=[]):
+
+    def run_executable(self, path, command_args=[], useShell: bool = False):
         # Creates a list with path and adds the optional command args to the list
         # ex: ['/path/to/file' '-a' '-l']
         arg_list = [path]
         arg_list.extend(command_args)  # Will do nothing if there are no command-line arguments provided
-        arg_list_str = " ".join(arg_list)
         # Setting the shell argument to a true value causes subprocess to spawn an intermediate shell process, and tell it to run the command
-        if os.name == "nt":
-            process = subprocess.Popen(args=arg_list, shell=True)
-        elif os.name == "posix":
-            process = subprocess.Popen(args=arg_list, shell=False)
+        process = subprocess.Popen(args=arg_list, shell=useShell)
+
+        name, cmd = self.__getProcessUtilInfo(process.pid)
 
         # *! Improvements: I might separate variable for pInfo and just create one inside the log_process_start()
         # function call, as we don't need to do anything with pInfo after this.
         # Converting to string since we aren't doing any calculations with the pid, and want to keep consistent with everything else
-        pInfo = ProcessInfo(arg_list[0], arg_list_str, str(process.pid))
+        pInfo = ProcessInfo(name, cmd, str(process.pid))
         self.log_process_start(pInfo)
+
+
+    def __getProcessUtilInfo(self, pid):
+        processUtilInfo = psutil.Process(pid)
+        name = processUtilInfo.name()
+        cmd = " ".join(processUtilInfo.cmdline())
+        return name,cmd
 
     """
         create_file(path)
@@ -89,6 +97,7 @@ class RCFramework:
             path: str
                 Path to the file to be created
     """
+
     def create_file(self, path):
         # Open file in overwrite mode, if the file already exists overwrite it
         fileOpenMode = "w"
@@ -96,10 +105,10 @@ class RCFramework:
         f.close()
 
         # A little unsure of what to be putting for here
-        command = "open"
-        commandLine = command + " " + path + " " + fileOpenMode
-        pid = str(os.getpid())
-        p = ProcessInfo(command, commandLine, pid)
+        pid = os.getpid()
+        name, cmd = self.__getProcessUtilInfo(pid)
+
+        p = ProcessInfo(name, cmd, str(pid))
         activityDesc = "Create"
         self.log_file_io(path, activityDesc, p)
 
@@ -112,6 +121,7 @@ class RCFramework:
             path: str
                 Path to the file to be modified
     """
+
     def modify_file(self, path):
         # Open it in appending mode, as we are appending. It won't overwrite the file if it already exists, just appends to the end
         fileOpenMode = "a"
@@ -119,10 +129,9 @@ class RCFramework:
         f.close()
 
         # A little unsure of what to be putting for here
-        command = "open"
-        commandLine = command + " " + path + " " + fileOpenMode
-        pid = str(os.getpid())
-        p = ProcessInfo(command, commandLine, pid)
+        pid = os.getpid()
+        name, cmd = self.__getProcessUtilInfo(pid)
+        p = ProcessInfo(name, cmd, str(pid))
         activityDesc = "Modify"
         self.log_file_io(path, activityDesc, p)
 
@@ -134,15 +143,15 @@ class RCFramework:
             path: str
                 Path to the file to be deleted
     """
+
     def delete_file(self, path):
         if os.path.exists(path):
             os.remove(path)
 
             # A little unsure of what to be putting for here
-            command = "os.remove"
-            commandLine = command + path
-            pid = str(os.getpid())
-            p = ProcessInfo(command, commandLine, pid)
+            pid = os.getpid()
+            name, cmd = self.__getProcessUtilInfo(pid)
+            p = ProcessInfo(name, cmd, str(pid))
             activityDesc = "Delete"
             self.log_file_io(path, activityDesc, p)
         else:
@@ -167,6 +176,7 @@ class RCFramework:
             data: str
                 String to be sent to the host & port, will be converted to bytes
     """
+
     def send(self, host, port, data):
         #   Try to connect to server, error if not able to connect
 
@@ -190,13 +200,11 @@ class RCFramework:
         clientSocket.close()
 
         # For logging
-        command = "send"
-        commandLine = command + " " + data
-        pid = str(os.getpid())
-        p = ProcessInfo(command, commandLine, pid)
+        pid = os.getpid()
+        name, cmd = self.__getProcessUtilInfo(pid)
+        p = ProcessInfo(name, cmd, str(pid))
         nd = NetworkData(sourceAddr, sourcePort, host, str(port), dataSentSize, protocol)
         self.log_network_activity(nd, p)
-
 
     """
         __log_to_file(p: ProcessInfo, d: dict = {})
@@ -211,6 +219,7 @@ class RCFramework:
             p: ProcessInfo
                 Information about the process to log
     """
+
     def __log_to_file(self, p: ProcessInfo, d: dict = {}):
         commonLogDict = {
             "timestamp": datetime.isoformat(datetime.now()),
@@ -223,7 +232,6 @@ class RCFramework:
         }
         commonLogDict.update(d)
         jsonObj = json.dumps(commonLogDict)
-        print(jsonObj)
 
         # String concat is slow and can be error-prone, so instead just write to the file twice
         self.m_logFile.write(jsonObj)
@@ -234,6 +242,7 @@ class RCFramework:
             p: ProcessInfo
                 Information about the process to log
     """
+
     def log_process_start(self, p: ProcessInfo):
         self.__log_to_file(p)
 
@@ -246,6 +255,7 @@ class RCFramework:
             p: ProcessInfo
                 Information about the process to log
     """
+
     def log_file_io(self, path, activityDesc, p: ProcessInfo):
         dict_log = {
             "path": path,
@@ -260,6 +270,7 @@ class RCFramework:
             p: ProcessInfo
                 Information about the process to log
     """
+
     def log_network_activity(self, nd: NetworkData, p: ProcessInfo):
         dict_log = {
             "network_data": {
@@ -298,12 +309,14 @@ def main():
     if os.name == "nt":
         cmd = "dir"
         cmdArgs = ["/d", "/w"]
+        useShell = True
     elif os.name == "posix":
         cmd = "ls"
         cmdArgs = ["-l", "-a"]
+        useShell = False
 
-    fw.run_executable(cmd)  # Should run the regular dir command, no arguments
-    fw.run_executable(cmd, cmdArgs)  # Should run the dir command with /d and /w --> "dir /d /w or dir /d/w"
+    fw.run_executable(cmd, useShell=useShell)  # Should run the regular dir command, no arguments
+    fw.run_executable(cmd, cmdArgs, useShell)  # Should run the dir command with /d and /w --> "dir /d /w or dir /d/w"
     print("------------------------------")
 
     fileName = "test.txt"
