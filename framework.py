@@ -2,7 +2,7 @@ from datetime import datetime
 import getpass
 import json
 import os
-import psutil
+import psutil  # Needs to be downloaded from Pip
 import socket
 import subprocess
 import sys
