@@ -81,12 +81,18 @@ class RCFramework:
         pInfo = ProcessInfo(name, cmd, str(process.pid))
         self.log_process_start(pInfo)
 
+    """
+        __getProcessUtilInfo(pid)
+            - Private helper function for getting the name and command line of the currently running process   
 
+            pid: int
+                Process ID for currently running process
+    """
     def __getProcessUtilInfo(self, pid):
         processUtilInfo = psutil.Process(pid)
         name = processUtilInfo.name()
         cmd = " ".join(processUtilInfo.cmdline())
-        return name,cmd
+        return name, cmd
 
     """
         create_file(path)
@@ -97,7 +103,6 @@ class RCFramework:
             path: str
                 Path to the file to be created
     """
-
     def create_file(self, path):
         # Open file in overwrite mode, if the file already exists overwrite it
         fileOpenMode = "w"
