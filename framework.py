@@ -68,7 +68,10 @@ class RCFramework:
         arg_list = [path]
         arg_list.extend(command_args)  # Will do nothing if there are no command-line arguments provided
         arg_list_str = " ".join(arg_list)
-        process = subprocess.Popen(args=arg_list, shell=True)
+        if os.name == "nt":
+            process = subprocess.Popen(args=arg_list, shell=True)
+        elif os.name == "posix":
+            process = subprocess.Popen(args=arg_list, shell=False)
 
         # *! Improvements: I might separate variable for pInfo and just create one inside the log_process_start()
         # function call, as we don't need to do anything with pInfo after this.
@@ -290,8 +293,14 @@ def main():
     fw = RCFramework()
 
     # Some manual tests and examples of the framework
-    cmd = "dir"
-    cmdArgs = ["/d", "/w"]
+    # Windows
+    if os.name == "nt":
+        cmd = "dir"
+        cmdArgs = ["/d", "/w"]
+    elif os.name == "posix":
+        cmd = "ls"
+        cmdArgs = ["-l", "-a"]
+
     fw.run_executable(cmd)  # Should run the regular dir command, no arguments
     fw.run_executable(cmd, cmdArgs)  # Should run the dir command with /d and /w --> "dir /d /w or dir /d/w"
     print("------------------------------")
