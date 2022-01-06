@@ -4,6 +4,7 @@ import json
 import os
 import socket
 import subprocess
+import sys
 import unittest
 
 
@@ -31,6 +32,7 @@ class ProcessInfo:
 class RCFramework:
     def __init__(self):
         # Each instance of the Framework will have its own log file
+        # Open it in appending mode, won't overwrite the file if it already exists, just appends to the end
         self.m_logFile = open("log.json", "a")
 
     def __del__(self):
@@ -39,34 +41,68 @@ class RCFramework:
     # Start a process, given a path to an executable file and the desired (optional) command-line arguments
     # Do we want to wait for the process to finish or just to open it?
     def run_executable(self, path, command_args=[]):
-        arg_list = [path]
-        # Creates a list with [path and adds the optional command args to the list]
+        # Creates a list with path and adds the optional command args to the list
         # ex: ['/path/to/file' '-a' '-l']
+        arg_list = [path]
         arg_list.extend(command_args)  # Will do nothing if there are no command-line arguments provided
-        print(arg_list)
-        # TODO: Look more into shell=True
+        arg_list_str = " ".join(arg_list)
         process = subprocess.Popen(args=arg_list, shell=True)
-        print(arg_list[0], arg_list, process.pid)
-        # pInfo = ProcessInfo(arg_list[0], arg_list, process.pid)
-        # self.log_process_start()
 
+        # For improvements, I might separate variable for pInfo and just create one inside the log_process_start()
+        # function call, as we don't need to do anything with pInfo after this Converting to string since we aren't
+        # doing any calculations with the pid, and want to keep consistent with everything else
+        pInfo = ProcessInfo(arg_list[0], arg_list_str, str(process.pid))
+        self.log_process_start(pInfo)
 
     # Create a file of specified type at a specified location
+    # For improvements, sanitize the path before opening
     def create_file(self, path):
-        # TODO: Sanitize the path before opening
-        f = open(path, "w")
+        # Open file in overwrite mode, if the file already exists overwrite it
+        fileOpenMode = "w"
+        f = open(path, fileOpenMode)
         f.close()
-        # f.write("Hello World")
+
+        # For logging
+        # A little unsure of what to be putting for here
+        command = "open"
+        commandLine = command + " " + path + " " + fileOpenMode
+        pid = str(os.getpid())
+        p = ProcessInfo(command, commandLine, pid)
+        activityDesc = "Create"
+        self.log_file_io(path, activityDesc, p)
 
     # Modify a file
     # What does modify a file mean? Need clarification on that
     def modify_file(self, path):
-        pass
+        # Open it in appending mode, as we are appending.
+        # It won't overwrite the file if it already exists, just appends to the end
+        fileOpenMode = "a"
+        f = open(path, fileOpenMode)
+        f.close()
+
+        # For logging
+        # A little unsure of what to be putting for here
+        command = "open"
+        commandLine = command + " " + path + " " + fileOpenMode
+        pid = str(os.getpid())
+        p = ProcessInfo(command, commandLine, pid)
+        activityDesc = "Modify"
+        self.log_file_io(path, activityDesc, p)
 
     # Delete a file
+    # Should we still log if the file isn't there? Need clarification
     def delete_file(self, path):
         if os.path.exists(path):
             os.remove(path)
+
+            # For logging
+            # A little unsure of what to be putting for here
+            command = "os.remove"
+            commandLine = command + path
+            pid = str(os.getpid())
+            p = ProcessInfo(command, commandLine, pid)
+            activityDesc = "Delete"
+            self.log_file_io(path, activityDesc, p)
         else:
             print("The file does not exist:")
             print("\t" + path)
@@ -78,27 +114,47 @@ class RCFramework:
     # ** Same for sending data
     # Make bufferSize configurable
     def send(self, host, port, data):
+        # For improvements, make connect into a separate private function
         # Try to connect to server, error if not able to connect
-        # TODO: Make connect into a separate private function
-        s = socket.socket()
-        s.connect((host, port))
+
+        # Create a client socket
+        clientSocket = socket.socket()
+        print("Created client socket")
+
+        # Connect to the server
+        clientSocket.connect((host, port))
+        clientHost, clientPort = clientSocket.getpeername()
+        print("Connected to %s:%s" % (host, port))
+        print("From %s:%s" % (clientHost, clientPort))
 
         # Send data to server
-        # data = "Hello Server!"
-        s.send(data.encode())
+        dataSentSize = str(sys.getsizeof(data))
+        protocol = "TCP"
+        clientSocket.send(data.encode())
+        print("Sent '", data, "' to server.", dataSentSize, "bytes")
 
-        # Receive data from server
-        bufSize = 1024
-        dataFromServer = s.recv(__bufsize=bufSize)
+        # Receive sourceAddr and sourcePort from server
+        bufferSize = 1024
+        sourceAddr = clientSocket.recv(bufferSize).decode()
+        sourcePort = clientSocket.recv(bufferSize).decode()
 
         # Print to console
-        print(dataFromServer.decode())
+        print("Data from server:")
+        print("\t", sourceAddr)
+        print("\t", sourcePort)
 
         # Close the socket when done
-        s.close()
+        clientSocket.close()
+        command = "send"
+        commandLine = command + " " + data
+        pid = str(os.getpid())
+        p = ProcessInfo(command, commandLine, pid)
+        nd = NetworkData(sourceAddr, sourcePort, host, str(port), dataSentSize, protocol)
+        self.log_network_activity(nd, p)
 
-    def log_process_start(self, p: ProcessInfo):
-        dict_log = {
+    # Dictionary is an optional parameter
+    def log_to_file(self, p: ProcessInfo, d: dict = {}):
+        commonLogDict = {
             "timestamp": datetime.isoformat(datetime.now()),
             "username": getpass.getuser(),
             "process": {
@@ -107,34 +163,26 @@ class RCFramework:
                 "id": p.process_id,
             }
         }
-        jsonObj = json.dumps(dict_log)
+        commonLogDict.update(d)
+        jsonObj = json.dumps(commonLogDict)
         print(jsonObj)
+
         # String concat is slow and can be error-prone, so instead just write to the file twice
         self.m_logFile.write(jsonObj)
         self.m_logFile.write('\n')
+
+    def log_process_start(self, p: ProcessInfo):
+        self.log_to_file(p)
 
     def log_file_io(self, path, activityDesc, p: ProcessInfo):
         dict_log = {
-            "timestamp": datetime.isoformat(datetime.now()),
             "path": path,
             "activity_desc": activityDesc,
-            "username": getpass.getuser(),
-            "process": {
-                "name": p.process_name,
-                "command_line": p.process_cmd,
-                "id": p.process_id,
-            }
         }
-        jsonObj = json.dumps(dict_log)
-        print(jsonObj)
-        # String concat is slow and can be error-prone, so instead just write to the file twice
-        self.m_logFile.write(jsonObj)
-        self.m_logFile.write('\n')
+        self.log_to_file(p, dict_log)
 
     def log_network_activity(self, nd: NetworkData, p: ProcessInfo):
         dict_log = {
-            "timestamp": datetime.isoformat(datetime.now()),
-            "username": getpass.getuser(),
             "network_data": {
                 "source_addr": nd.source_addr,
                 "source_port": nd.source_port,
@@ -142,18 +190,9 @@ class RCFramework:
                 "dest_port": nd.dest_port,
                 "data_size": nd.data_size,
                 "protocol": nd.protocol
-            },
-            "process": {
-                "name": p.process_name,
-                "command_line": p.process_cmd,
-                "id": p.process_id,
             }
         }
-        jsonObj = json.dumps(dict_log)
-        print(jsonObj)
-        # String concat is slow and can be error-prone, so instead just write to the file twice
-        self.m_logFile.write(jsonObj)
-        self.m_logFile.write('\n')
+        self.log_to_file(p, dict_log)
 
 
 # If this were to be something I'd actually commit I would have actual unit tests with (hopefully) a testing framework
@@ -165,14 +204,14 @@ class RCFramework:
 - Expected behavior of calling create_file with empty path
 """
 
+
 def main():
     fw = RCFramework()
 
     cmd = "dir"
     cmdArgs = ["/d", "/w"]
-    # fw.run_executable(cmd)  # Should run the regular dir command, no arguments
+    fw.run_executable(cmd)  # Should run the regular dir command, no arguments
     fw.run_executable(cmd, cmdArgs)  # Should run the dir command with /d and /w --> "dir /d /w or dir /d/w"
-    """   
     print("------------------------------")
 
     fileName = "test.txt"
@@ -182,9 +221,10 @@ def main():
     fw.delete_file("asdf.txt")  # Should print error
 
     print("------------------------------")
-
     # Test out sending data to a source address and port
-    # fw.send("127.0.0.1", 9090, "hello world")
+    address = "127.0.0.1"
+    port = 9090
+    fw.send(address, port, "hello world")
 
     mockProcess = ProcessInfo("ls", "stuff", "23874")
     mockNetworkData = NetworkData("1.1.1.1", "8080", "8.8.8.8", "80", "1024", "HTTP")
@@ -193,8 +233,6 @@ def main():
     fw.log_network_activity(mockNetworkData, mockProcess)
 
     print("------------------------------")
-    
-    """
     print("--End of main--\n")
 
 
